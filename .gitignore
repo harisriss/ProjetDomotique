@@ -1,0 +1,47 @@
+# ==========================================
+# GLOBAUX (Système & IDE)
+# ==========================================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.vscode/
+.idea/
+
+# ==========================================
+# REACT / FRONTEND
+# ==========================================
+React/node_modules/
+React/dist/
+React/build/
+React/.eslintcache
+React/*.tsbuildinfo
+
+# ==========================================
+# PLATFORMIO / ESP32
+# ==========================================
+PlatformIO/.pio/
+PlatformIO/.gcc-flags.json
+PlatformIO/test/
+# Fichiers de compilation
+*.o
+*.bin
+*.elf
+
+# --- SÉCURITÉ ---
+# On ignore les secrets (Wi-Fi, etc.) pour ne pas les publier
+PlatformIO/include/secrets.h
+
+# ==========================================
+# RASPBERRY SERVER (C++)
+# ==========================================
+RaspberryServer/obj/
+RaspberryServer/domo_server
+
+# ==========================================
+# CONFIG & MOSQUITTO
+# ==========================================
+# On garde les fichiers .conf mais on ignore les données
+Config/mosquitto/data/
+Config/mosquitto/log/
+*.db
