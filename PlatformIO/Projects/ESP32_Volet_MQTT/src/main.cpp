@@ -10,7 +10,7 @@ const int RELAY_DOWN = 27;
 
 // --- PARAMÈTRES MQTT ---
 const char *mqtt_server = "192.168.1.19";
-char nom_piece[40] = "nouveau_volet";
+char nom_piece[40] = "nouveau_volet"; // Sera écrasé par la mémoire si déjà configuré
 
 // --- TOPICS DYNAMIQUES ---
 String topicCmd, topicEtat, topicPosFeedback, topicPosSet;
@@ -23,7 +23,7 @@ String directionActuelle = "";
 unsigned long mouvementStart = 0;
 float positionStartMouvement = 0.0;
 
-// --- TEMPS DE COURSE (À ajuster selon tes volets) ---
+// --- TEMPS DE COURSE ---
 const unsigned long TEMPS_MONTEE = 22000;
 const unsigned long TEMPS_DESCENTE = 19000;
 
@@ -42,12 +42,13 @@ void setup_topics()
   topicPosSet = root + "/set";
 }
 
-void sauvegarderPosition()
+void sauvegarderDonnees()
 {
   preferences.begin("volet", false);
   preferences.putFloat("pos", positionActuelle);
+  preferences.putString("piece", nom_piece); // Sécurité : on sauve le nom de la pièce aussi
   preferences.end();
-  Serial.printf("💾 Position sauvegardée : %.1f%%\n", positionActuelle);
+  Serial.printf("💾 Données sauvegardées (Pos: %.1f%%, Pièce: %s)\n", positionActuelle, nom_piece);
 }
 
 void couperMoteur(String raison)
@@ -58,7 +59,7 @@ void couperMoteur(String raison)
   directionActuelle = "";
   positionCible = -1;
 
-  sauvegarderPosition();
+  sauvegarderDonnees();
 
   client.publish(topicEtat.c_str(), raison.c_str(), true);
   client.publish(topicPosFeedback.c_str(), String((int)positionActuelle).c_str(), true);
@@ -91,7 +92,6 @@ void callback(char *topic, byte *payload, unsigned int length)
 
   if (positionCible != -1)
   {
-    // Si déjà à la cible, on ignore
     if (abs(positionCible - positionActuelle) < 1.0)
     {
       couperMoteur(positionActuelle >= 98 ? "FERMÉ" : (positionActuelle <= 2 ? "OUVERT" : "CIBLE ATTEINTE"));
@@ -133,30 +133,35 @@ void setup()
   digitalWrite(RELAY_UP, LOW);
   digitalWrite(RELAY_DOWN, LOW);
 
-  // 1. Récupération mémoire
+  // 1. Récupération mémoire (Position ET Nom de la pièce)
   preferences.begin("volet", true);
   positionActuelle = preferences.getFloat("pos", 0.0);
+  String savedPiece = preferences.getString("piece", "nouveau_volet");
+  strcpy(nom_piece, savedPiece.c_str());
   preferences.end();
-  Serial.printf("📍 Position initiale : %.1f%%\n", positionActuelle);
+
+  Serial.printf("📍 État initial : %s à %.1f%%\n", nom_piece, positionActuelle);
 
   // 2. WiFiManager
   WiFiManager wm;
 
-  // --- Ligne de reset (À commenter avec // une fois que ça marche) ---
-  wm.resetSettings();
+  // LIGNE DÉSACTIVÉE :wm.resetSettings(); // On ne reset plus au démarrage !
 
   WiFiManagerParameter custom_room_name("room", "Nom de la pièce (ex: salon)", nom_piece, 40);
   wm.addParameter(&custom_room_name);
 
-  Serial.println("🌐 En attente de configuration WiFi (Portail actif)...");
+  Serial.println("🌐 Connexion WiFi...");
   if (!wm.autoConnect("Config_Volet_ESP32"))
   {
-    Serial.println("❌ Échec de connexion. Redémarrage...");
+    Serial.println("❌ Échec. Redémarrage...");
     delay(3000);
     ESP.restart();
   }
 
+  // Mise à jour et sauvegarde du nom si changé via le portail
   strcpy(nom_piece, custom_room_name.getValue());
+  sauvegarderDonnees();
+
   Serial.println("✅ WiFi Connecté !");
   Serial.print("🏠 Pièce assignée : ");
   Serial.println(nom_piece);
@@ -173,10 +178,10 @@ void reconnect()
   while (!client.connected())
   {
     String clientId = "Volet_" + String(nom_piece);
-    Serial.print("Attempting MQTT connection as " + clientId + "...");
+    Serial.print("Connection MQTT: " + clientId + "...");
     if (client.connect(clientId.c_str(), topicEtat.c_str(), 1, true, "HORS LIGNE"))
     {
-      Serial.println("connected");
+      Serial.println("OK");
       client.subscribe(topicCmd.c_str());
       client.subscribe(topicPosSet.c_str());
       client.publish(topicEtat.c_str(), "EN LIGNE", true);
@@ -184,9 +189,9 @@ void reconnect()
     }
     else
     {
-      Serial.print("failed, rc=");
+      Serial.print("Erreur rc=");
       Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      Serial.println(" - Nouvelle tentative dans 5s");
       delay(5000);
     }
   }
@@ -223,7 +228,6 @@ void loop()
       }
     }
 
-    // Feedback visuel sur l'interface (toutes les 400ms)
     static unsigned long lastUpdate = 0;
     if (millis() - lastUpdate > 400)
     {
