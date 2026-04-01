@@ -10,7 +10,7 @@ const int RELAY_DOWN = 27;
 
 // --- PARAMÈTRES MQTT ---
 const char *mqtt_server = "192.168.1.19";
-char nom_piece[40] = "nouveau_volet"; // Sera écrasé par la mémoire si déjà configuré
+char nom_piece[40] = "salon"; // Sera écrasé par la mémoire si déjà configuré
 
 // --- TOPICS DYNAMIQUES ---
 String topicCmd, topicEtat, topicPosFeedback, topicPosSet;

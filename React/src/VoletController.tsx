@@ -1,28 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
-import { Text, Button, Group, Stack, Badge, Paper, Slider, Progress, Center, Loader } from '@mantine/core';
-import { IconChevronUp, IconChevronDown, IconSquare, IconRefresh } from '@tabler/icons-react';
+import {useEffect, useRef, useState} from 'react';
+import {ActionIcon, Badge, Button, Center, Group, Loader, Paper, Stack, Text} from '@mantine/core';
+import {IconChevronDown, IconChevronUp, IconSquare, IconTarget} from '@tabler/icons-react';
 import mqtt from 'mqtt';
+import ShutterVisual from './ShutterVisual';
 
 const MQTT_URL = 'ws://192.168.1.19:9001';
 
-export default function VoletController({ roomId }: { roomId: string }) {
+export default function VoletController({roomId}: { roomId: string }) {
   const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [isSynced, setIsSynced] = useState(false); // Nouveau : pour attendre la 1ère position
+  const [isSynced, setIsSynced] = useState(false);
   const [realStatus, setRealStatus] = useState('SYNCHRONISATION...');
-  const [position, setPosition] = useState(0);
 
+  const [position, setPosition] = useState(0);
+  const [targetPosition, setTargetPosition] = useState(0);
+
+  // Topics
   const TOPIC_CMD = `maison/volet/${roomId}/commande`;
   const TOPIC_ETAT = `maison/volet/${roomId}/etat`;
   const TOPIC_POS_FEEDBACK = `maison/volet/${roomId}/position`;
   const TOPIC_POS_SET = `maison/volet/${roomId}/set`;
 
   useEffect(() => {
-    const client = mqtt.connect(MQTT_URL, { reconnectPeriod: 5000 });
+    const client = mqtt.connect(MQTT_URL, {reconnectPeriod: 5000});
 
     client.on('connect', () => {
       setIsConnected(true);
-      client.subscribe([TOPIC_ETAT, TOPIC_POS_FEEDBACK, TOPIC_POS_SET]);
+      // On utilise les variables locales définies juste au-dessus
+      client.subscribe([TOPIC_ETAT, TOPIC_POS_FEEDBACK]);
     });
 
     client.on('message', (topic, message) => {
@@ -36,7 +41,15 @@ export default function VoletController({ roomId }: { roomId: string }) {
         const newPos = parseInt(msgStr, 10);
         if (!isNaN(newPos)) {
           setPosition(newPos);
-          setIsSynced(true); // On confirme qu'on a reçu la position réelle
+
+          if (!isSynced) {
+            setTargetPosition(newPos);
+            setIsSynced(true);
+          }
+
+          if (Math.abs(newPos - targetPosition) < 1) {
+            setTargetPosition(newPos);
+          }
         }
       }
     });
@@ -47,26 +60,36 @@ export default function VoletController({ roomId }: { roomId: string }) {
     });
 
     mqttClientRef.current = client;
-    return () => { if (mqttClientRef.current) mqttClientRef.current.end(); };
-  }, [roomId]);
+    return () => {
+      if (mqttClientRef.current) mqttClientRef.current.end();
+    };
+    // AJOUT DES DÉPENDANCES MANQUANTES ICI
+  }, [roomId, isSynced, targetPosition, TOPIC_ETAT, TOPIC_POS_FEEDBACK]);
+
+  const handleSetPosition = (newPos: number) => {
+    if (mqttClientRef.current?.connected) {
+      setTargetPosition(newPos);
+      mqttClientRef.current.publish(TOPIC_POS_SET, newPos.toString());
+    }
+  };
 
   const sendCmd = (cmd: string) => {
     if (mqttClientRef.current?.connected) {
       mqttClientRef.current.publish(TOPIC_CMD, cmd);
+      if (cmd === 'OUVRIR') setTargetPosition(0);
+      if (cmd === 'FERMER') setTargetPosition(100);
     }
   };
 
   const isMoving = realStatus.includes('...');
   const isEspOnline = isConnected && realStatus !== 'HORS LIGNE' && realStatus !== 'SERVEUR DÉCONNECTÉ' && realStatus !== 'SYNCHRONISATION...';
 
-  // Si on n'a pas encore reçu la position réelle, on affiche un loader
-  // Cela garantit que le Slider sera créé AVEC la bonne valeur (ex: 83%)
   if (!isSynced) {
     return (
-        <Center h={200}>
+        <Center h={350}>
           <Stack align="center" gap="xs">
-            <Loader color="dark" size="sm" />
-            <Text size="xs" fw={700} c="dimmed">LECTURE DE LA POSITION...</Text>
+            <Loader color="dark" size="sm"/>
+            <Text size="xs" fw={700} c="dimmed">RÉCUPÉRATION DU VOLET...</Text>
           </Stack>
         </Center>
     );
@@ -74,63 +97,91 @@ export default function VoletController({ roomId }: { roomId: string }) {
 
   return (
       <Stack gap="xl">
-        <Paper withBorder p="lg" radius="md" bg="gray.0" style={{ display: 'flex', justifyContent: 'center' }}>
-          <svg width="140" height="180" viewBox="0 0 100 120">
-            <rect x="5" y="10" width="90" height="100" fill="white" stroke="#dee2e6" strokeWidth="2" />
-            <rect x="5" y="10" width="90" height={position} fill="#495057" style={{ transition: 'height 0.4s linear' }} />
-            {Array.from({ length: 11 }).map((_, i) => (
-                <line key={i} x1="5" y1={10+(i*10)} x2="95" y2={10+(i*10)} stroke="rgba(255,255,255,0.15)" strokeWidth="1" visibility={position > (i*10) ? 'visible' : 'hidden'} />
-            ))}
-            <rect x="5" y={10+position-2} width="90" height="4" fill="#212529" visibility={position > 2 ? 'visible' : 'hidden'} style={{ transition: 'y 0.4s linear' }} />
-          </svg>
-        </Paper>
-
-        <Stack gap={6}>
-          <Group justify="space-between">
-            <Text size="xs" fw={700} c="dimmed">POSITION : {position}%</Text>
-            <Badge variant="filled" color={isEspOnline ? 'green' : 'red'}>
-              {isEspOnline ? 'ESP32 EN LIGNE' : 'ESP32 DÉCONNECTÉ'}
-            </Badge>
-          </Group>
-          <Progress
-              value={position}
-              size="xl"
-              radius="sm"
-              color="#495057"
-              striped={isMoving}
-              animated={isMoving}
-              styles={{ section: { transition: 'width 0.4s linear' } }}
+        <Center>
+          <ShutterVisual
+              currentPos={position}
+              targetPos={targetPosition}
+              onSetPosition={handleSetPosition}
+              isOnline={isEspOnline}
           />
+        </Center>
+
+        <Stack gap={8}>
+          <Group justify="space-between" align="center">
+            <Stack gap={0}>
+              <Text size="xs" fw={900} c="dimmed" style={{letterSpacing: '1px'}}>SYSTÈME</Text>
+              <Group gap={6}>
+                {isMoving && <Loader size={12} color="blue"/>}
+                <Text fw={800} size="sm" c={isMoving ? "blue" : "dark"}>
+                  {realStatus.toUpperCase()}
+                </Text>
+              </Group>
+            </Stack>
+            {Math.abs(targetPosition - position) > 1 ? (
+                <Badge
+                    variant="outline"
+                    leftSection={<IconTarget size={14} color="gray"/>}
+                    size="lg"
+                    radius="sm"
+                >
+                  OBJECTIF : {targetPosition}%
+                </Badge>
+            ) : (
+                <Badge
+                    variant="outline"
+                    color={isEspOnline ? 'green' : 'red'}
+                    size="lg"
+                    radius="sm"
+                >
+                  {isEspOnline ? 'ESP32 CONNECTÉ' : 'HORS LIGNE'}
+                </Badge>)
+            }
+          </Group>
         </Stack>
 
-        <Stack gap={4}>
-          <Text size="xs" fw={700} c="dimmed">CONSIGNE</Text>
-          <Slider
-              key={`${roomId}-${isSynced}`} // Force la création avec la valeur synchronisée
-              defaultValue={position}
-              onChangeEnd={(val) => {
-                if (mqttClientRef.current?.connected) {
-                  mqttClientRef.current.publish(TOPIC_POS_SET, val.toString());
-                }
-              }}
-              color="dark"
-              label={(val) => `${val}%`}
-              disabled={!isEspOnline}
-          />
-        </Stack>
+        <Paper withBorder p="md" radius="md" bg="gray.0">
+          <Stack gap="md">
+            <Group grow gap="xs">
+              <Button
+                  variant="filled"
+                  color="dark"
+                  radius="md"
+                  leftSection={<IconChevronUp size={20}/>}
+                  onClick={() => sendCmd('OUVRIR')}
+                  disabled={!isEspOnline || position === 0 || isMoving}
+              >
+                MONTER
+              </Button>
 
-        <Paper p="xs" radius="sm" withBorder bg="gray.0">
-          <Group justify="center" gap="xs">
-            {isMoving && <IconRefresh size={14} className="animate-spin" color="gray" />}
-            <Text fw={700} size="xs" c="dark">{realStatus.toUpperCase()}</Text>
-          </Group>
+              <ActionIcon
+                  variant="outline"
+                  color="gray"
+                  size="lg"
+                  h={36}
+                  radius="md"
+                  onClick={() => sendCmd('STOP')}
+                  disabled={!isEspOnline}
+              >
+                <IconSquare size={18} fill="currentColor"/>
+              </ActionIcon>
+
+              <Button
+                  variant="filled"
+                  color="dark"
+                  radius="md"
+                  leftSection={<IconChevronDown size={20}/>}
+                  onClick={() => sendCmd('FERMER')}
+                  disabled={!isEspOnline || position === 100 || isMoving}
+              >
+                DESCENDRE
+              </Button>
+            </Group>
+          </Stack>
         </Paper>
 
-        <Group grow gap="sm">
-          <Button variant="filled" color="dark" leftSection={<IconChevronUp size={18} />} onClick={() => sendCmd('OUVRIR')} disabled={!isEspOnline || position === 0 || isMoving}>OUVRIR</Button>
-          <Button variant="outline" color="gray" onClick={() => sendCmd('STOP')} disabled={!isEspOnline}><IconSquare size={16} fill="currentColor" /></Button>
-          <Button variant="filled" color="dark" leftSection={<IconChevronDown size={18} />} onClick={() => sendCmd('FERMER')} disabled={!isEspOnline || position === 100 || isMoving}>FERMER</Button>
-        </Group>
+        <Text size="xs" c="dimmed" ta="center">
+          Astuce : Cliquez sur la vitre ou glissez le volet pour piloter.
+        </Text>
       </Stack>
   );
 }
