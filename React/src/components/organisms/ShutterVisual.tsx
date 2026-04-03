@@ -20,11 +20,10 @@ const ShutterVisual: React.FC<ShutterVisualProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sécurité pour les données
+  // Sécurité sur les entrées
   const safeCurrent = typeof currentPos === 'number' ? currentPos : 0;
   const safeTarget = typeof targetPos === 'number' ? targetPos : 0;
 
-  // Synchronisation du volet gris (réel)
   useEffect(() => {
     if (!isDragging) {
       const targetY = (safeCurrent / 100) * windowHeight;
@@ -71,10 +70,10 @@ const ShutterVisual: React.FC<ShutterVisualProps> = ({
               zIndex: 0
             }}
         >
-          {/* FOND : Ciel bleu (Z-Index 1) */}
+          {/* FOND : Ciel bleu */}
           <Box style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #4facfe, #00f2fe)', zIndex: 1 }} />
 
-          {/* LE VOLET RÉEL (Gris) - Descendu d'un cran (Z-Index 2) */}
+          {/* VOLET RÉEL (Gris) - Z-Index 2 pour être derrière le Ghost au cas où on remonte */}
           <motion.div
               drag={isOnline ? "y" : false}
               dragConstraints={{ top: 0, bottom: windowHeight }}
@@ -87,18 +86,17 @@ const ShutterVisual: React.FC<ShutterVisualProps> = ({
                 height: '100%',
                 position: 'absolute',
                 top: -windowHeight,
-                zIndex: 2, // <-- Changé ici : Z-Index 2 (derrière le Ghost)
+                zIndex: 2,
                 backgroundColor: '#373A40',
                 backgroundImage: 'linear-gradient(rgba(0,0,0,0.2) 1px, transparent 1px)',
                 backgroundSize: '100% 15px',
                 cursor: isDragging ? 'grabbing' : 'pointer'
               }}
           >
-            {/* Lame finale noire */}
             <Box style={{ position: 'absolute', bottom: 0, width: '100%', height: 10, background: '#1A1B1E' }} />
           </motion.div>
 
-          {/* --- LE GHOST (Indicateur de cible) - Monté d'un cran (Z-Index 3) --- */}
+          {/* GHOST (Cible) - Z-Index 3 pour rester visible même pendant la remontée */}
           {Math.abs(safeTarget - safeCurrent) > 1 && (
               <Box
                   style={{
@@ -106,10 +104,8 @@ const ShutterVisual: React.FC<ShutterVisualProps> = ({
                     height: `${safeTarget}%`,
                     position: 'absolute',
                     top: 0,
-                    zIndex: 3, // <-- Changé ici : Z-Index 3 (devant le Volet Réel)
-                    // Ombre translucide pour indiquer la cible
+                    zIndex: 3,
                     backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    // Ligne de limite basse blanche très fine
                     borderBottom: '2px solid rgba(255, 255, 255, 0.5)',
                     pointerEvents: 'none',
                     transition: 'height 0.3s ease-out'
@@ -117,7 +113,7 @@ const ShutterVisual: React.FC<ShutterVisualProps> = ({
               />
           )}
 
-          {/* REFLET SUR LA VITRE (Z-Index 4) */}
+          {/* REFLET VITRE */}
           <Box style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%)', pointerEvents: 'none', zIndex: 4 }} />
         </Box>
 

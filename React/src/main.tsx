@@ -2,11 +2,11 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { MantineProvider, createTheme } from '@mantine/core'
 import '@mantine/core/styles.css'
-import App from './App.tsx'
+import Dashboard from "./components/pages/Dashboard.tsx";
 
 const theme = createTheme({
-  primaryColor: 'dark', // Pour avoir le noir Shadcn
-  defaultRadius: 'md',  // Arrondis subtils (8px)
+  primaryColor: 'dark',
+  defaultRadius: 'md',
   fontFamily: 'Inter, system-ui, sans-serif',
   components: {
     Button: {
@@ -27,7 +27,7 @@ const theme = createTheme({
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <MantineProvider theme={theme} defaultColorScheme="light">
-        <App />
+        <Dashboard />
       </MantineProvider>
     </React.StrictMode>,
 )
