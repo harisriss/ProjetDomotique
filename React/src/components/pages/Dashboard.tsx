@@ -1,11 +1,16 @@
 import { useState } from 'react';
-import { Modal, Container, Title, Stack, Box, Text } from '@mantine/core';
+import { Modal, Container, Title, Stack, Box, Text, Affix, Button } from '@mantine/core';
+import { IconTerminal2 } from '@tabler/icons-react';
 import ApartmentPlan from "../templates/ApartmentPlan.tsx";
 import VoletController from "../organisms/VoletController.tsx";
+import {LogConsole} from "../molecules/LogConsole.tsx";
 
 export default function Dashboard() {
   const [opened, setOpened] = useState(false);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
+
+  // Nouvel état pour la console de logs
+  const [logsOpened, setLogsOpened] = useState(false);
 
   const handleOpenRoom = (roomId: string) => {
     setActiveRoom(roomId);
@@ -24,10 +29,27 @@ export default function Dashboard() {
             </Stack>
 
             <Box style={{ width: '100%', maxWidth: '900px' }}>
-              {/* Le Template du plan */}
               <ApartmentPlan onRoomClick={handleOpenRoom} activeRoomId={activeRoom} />
             </Box>
           </Stack>
+
+          {/* Bouton flottant pour ouvrir les logs */}
+          <Affix position={{ bottom: 20, right: 20 }}>
+            <Button
+                leftSection={<IconTerminal2 size={16} />}
+                onClick={() => setLogsOpened(true)}
+                color="dark"
+                radius="xl"
+            >
+              Console Logs
+            </Button>
+          </Affix>
+
+          {/* Composant Console de Logs */}
+          <LogConsole
+              opened={logsOpened}
+              onClose={() => setLogsOpened(false)}
+          />
 
           <Modal
               opened={opened}

@@ -12,25 +12,33 @@ const MQTT_URL = 'ws://192.168.1.19:9001';
 
 export default function VoletController({ roomId }: { roomId: string }) {
   const mqttClientRef = useRef<mqtt.MqttClient | null>(null);
+
+  // États de connexion et synchro
   const [isConnected, setIsConnected] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
   const [realStatus, setRealStatus] = useState('SYNCHRONISATION...');
 
+  // États de position
   const [position, setPosition] = useState(0);
   const [targetPosition, setTargetPosition] = useState(0);
 
-  // Topics
+  // Topics (calculés une fois par roomId)
   const TOPIC_CMD = `maison/volet/${roomId}/commande`;
   const TOPIC_ETAT = `maison/volet/${roomId}/etat`;
   const TOPIC_POS_FEEDBACK = `maison/volet/${roomId}/position`;
   const TOPIC_POS_SET = `maison/volet/${roomId}/set`;
 
+  // Gestion de la connexion MQTT
   useEffect(() => {
-    const client = mqtt.connect(MQTT_URL, { reconnectPeriod: 5000 });
+    const client = mqtt.connect(MQTT_URL, {
+      reconnectPeriod: 5000,
+      clientId: `web_client_${roomId}_${Math.random().toString(16).slice(2, 8)}`
+    });
 
     client.on('connect', () => {
       setIsConnected(true);
       client.subscribe([TOPIC_ETAT, TOPIC_POS_FEEDBACK]);
+      console.log(`✅ Connecté au volet : ${roomId}`);
     });
 
     client.on('message', (topic, message) => {
@@ -44,13 +52,12 @@ export default function VoletController({ roomId }: { roomId: string }) {
         const newPos = parseInt(msgStr, 10);
         if (!isNaN(newPos)) {
           setPosition(newPos);
-          if (!isSynced) {
-            setTargetPosition(newPos);
-            setIsSynced(true);
-          }
-          if (Math.abs(newPos - targetPosition) < 1) {
-            setTargetPosition(newPos);
-          }
+
+          // On ne synchronise la cible qu'au premier message reçu
+          setIsSynced((prevSynced) => {
+            if (!prevSynced) setTargetPosition(newPos);
+            return true;
+          });
         }
       }
     });
@@ -61,26 +68,32 @@ export default function VoletController({ roomId }: { roomId: string }) {
     });
 
     mqttClientRef.current = client;
-    return () => {
-      if (mqttClientRef.current) mqttClientRef.current.end();
-    };
-  }, [roomId, isSynced, targetPosition, TOPIC_ETAT, TOPIC_POS_FEEDBACK]);
 
+    return () => {
+      console.log(`🔌 Déconnexion du volet : ${roomId}`);
+      if (client) client.end();
+    };
+  }, [roomId]); // UNIQUEMENT roomId ici.
+
+  // Actions de pilotage
   const handleSetPosition = (newPos: number) => {
     if (mqttClientRef.current?.connected) {
       setTargetPosition(newPos);
-      mqttClientRef.current.publish(TOPIC_POS_SET, newPos.toString());
+      mqttClientRef.current.publish(TOPIC_POS_SET, newPos.toString(), { qos: 1 });
     }
   };
 
   const sendCmd = (cmd: string) => {
     if (mqttClientRef.current?.connected) {
-      mqttClientRef.current.publish(TOPIC_CMD, cmd);
+      mqttClientRef.current.publish(TOPIC_CMD, cmd, { qos: 1 });
+
       if (cmd === 'OUVRIR') setTargetPosition(0);
       if (cmd === 'FERMER') setTargetPosition(100);
+      if (cmd === 'STOP') setTargetPosition(position); // On fige la cible sur la position actuelle
     }
   };
 
+  // Logique d'affichage
   const isMoving = realStatus.includes('...');
   const isEspOnline = isConnected && !['HORS LIGNE', 'SERVEUR DÉCONNECTÉ', 'SYNCHRONISATION...'].includes(realStatus);
 
@@ -97,7 +110,6 @@ export default function VoletController({ roomId }: { roomId: string }) {
 
   return (
       <Stack gap="xl">
-        {/* ORGANISME VISUEL */}
         <Center>
           <ShutterVisual
               currentPos={position}
@@ -107,7 +119,6 @@ export default function VoletController({ roomId }: { roomId: string }) {
           />
         </Center>
 
-        {/* SECTION STATUS (Molécule intégrée) */}
         <Stack gap={8}>
           <Group justify="space-between" align="center">
             <Stack gap={0}>
@@ -127,7 +138,6 @@ export default function VoletController({ roomId }: { roomId: string }) {
           </Group>
         </Stack>
 
-        {/* MOLÉCULE DE CONTRÔLE */}
         <ShutterControls
             onCmd={sendCmd}
             isOnline={isEspOnline}

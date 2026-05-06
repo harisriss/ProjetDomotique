@@ -62,9 +62,6 @@ int main(int argc, char *argv[])
         // Abonnement
         client.subscribe(TOPIC, 1)->wait();
 
-        std::cout << "Logging actif. Appuyez sur Ctrl+C pour quitter." << std::endl;
-        std::cout << "-----------------------------------------------" << std::endl;
-
         while (true)
         {
             // Récupération du message (bloquant)
