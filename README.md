@@ -1,112 +1,134 @@
-cat << 'EOF' > README.md
+# 🏠 Système de Contrôle de Volets Roulants IoT
 
-# 🏗️ Système de Contrôle de Volets Roulants IoT
+![TypeScript](https://img.shields.io/badge/TypeScript-80%25-3178C6?style=flat-square&logo=typescript)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
+![MQTT](https://img.shields.io/badge/MQTT-Mosquitto-660066?style=flat-square)
+![Raspberry Pi](https://img.shields.io/badge/Raspberry_Pi-4-C51A4A?style=flat-square&logo=raspberry-pi)
+![PlatformIO](https://img.shields.io/badge/ESP32-PlatformIO-orange?style=flat-square)
 
-**Infrastructure Résidentielle Connectée, Souveraine et Temps Réel.**
-
-Ce projet déploie une stack complète permettant le pilotage de moteurs tubulaires via une interface web moderne, un broker de messages local et des microcontrôleurs ESP32.
-
-## 📂 Organisation des Dossiers (Raspberry Pi)
-
-- **`/home/raspberrypi/services/`** : Cœur du système (Logger C++ et Script Responder).
-- **`/home/raspberrypi/iot-project/`** : Interface web React.
-- **`/home/raspberrypi/shutter_events.log`** : Journal historique de l'activité.
+> Infrastructure résidentielle connectée, souveraine et temps réel.
+> Projet personnel conçu, développé et déployé en production à domicile.
 
 ---
 
-## 🚀 Guide de Lancement Rapide (Ordre des étapes)
+## 🎯 À propos
 
-### Étape 1 : Configuration du Broker (Raspberry Pi)
+Ce projet déploie une stack complète pour piloter des volets roulants motorisés via une interface web moderne. Aucun cloud tiers — toute l'intelligence tourne sur un Raspberry Pi local, garantissant confidentialité et disponibilité même sans internet.
 
-Le Raspberry Pi centralise les échanges. Il doit être configuré pour accepter les connexions Web (React).
+**Ce que j'ai construit :**
+- Une interface React 18 + TypeScript avec tableau de bord temps réel
+- Un firmware ESP32 (C++) avec protection moteur et persistance d'état
+- Un broker MQTT local (Mosquitto) avec double tunnel TCP/WebSocket
+- Un service de logging C++ pour l'archivage des événements
 
-1. **Installation** : `sudo apt install mosquitto mosquitto-clients`
-2. **Configuration WebSockets** : Modifier `/etc/mosquitto/mosquitto.conf` pour inclure :
-   ```text
-   listener 1883
-   allow_anonymous true
-   listener 9001
-   protocol websockets
-   allow_anonymous true
-   Redémarrage : sudo systemctl restart mosquitto
-   ```
+---
 
-Étape 2 : Déploiement du Firmware (ESP32)
-L'intelligence embarquée gère la sécurité moteur et la connectivité.
+## 📸 Interface
 
-Secrets : Configurer include/secrets.h avec l'IP du Raspberry Pi.
+![Interface](React/src/assets/images/interface.png)
+---
 
-Flashage : Utiliser PlatformIO dans VS Code.
+## 🛠️ Stack technique
 
-Conseil : Faire un pio run -t erase avant le premier flash pour vider la mémoire NVS.
+| Couche | Technologie |
+|---|---|
+| Interface | React 18, TypeScript, Mantine UI |
+| Communication | MQTT (Mosquitto), WebSockets |
+| Embarqué | C++, PlatformIO, ESP32 |
+| Serveur | Raspberry Pi, Bash, Logger C++ |
 
-Provisionnement WiFi : Se connecter au point d'accès Wi-Fi de l'ESP32 avec un smartphone, configurer le réseau local et saisir le nom de la pièce en minuscules (ex: salon).
+---
 
-Étape 3 : Interface de Contrôle (React + Mantine)
-Le tableau de bord permet le pilotage et le retour d'état visuel.
+## 🚀 Lancer le projet
 
-Installation : npm install
+### Prérequis
+- Raspberry Pi avec Mosquitto installé
+- Node.js 18+
+- PlatformIO (VS Code)
 
-Lancement : npm run dev
+### 1. Broker MQTT (Raspberry Pi)
 
-Vérification : Le badge de statut doit passer au vert (Connecté) si l'ESP32 est en ligne.
+```bash
+sudo apt install mosquitto mosquitto-clients
+```
 
-### Étape 4 : Activation des Services de Monitoring
+Modifier `/etc/mosquitto/mosquitto.conf` :
+```
+listener 1883
+allow_anonymous true
+listener 9001
+protocol websockets
+allow_anonymous true
+```
 
-Pour assurer l'archivage et la communication des logs vers l'interface :
+```bash
+sudo systemctl restart mosquitto
+```
 
-**Compilation du Logger** :
+### 2. Firmware ESP32
 
-````bash
+```bash
+# Configurer include/secrets.h avec l'IP du Raspberry Pi
+# Puis flasher via PlatformIO
+pio run -t erase   # Vider la mémoire NVS avant le premier flash
+pio run -t upload
+```
+
+Après le flash, connecte-toi au point d'accès Wi-Fi de l'ESP32 pour configurer le réseau local et le nom de la pièce (en minuscules : `salon`, `cuisine`…).
+
+### 3. Interface React
+
+```bash
+cd React
+npm install
+npm run dev
+```
+
+Le badge de statut passe au vert quand l'ESP32 est en ligne.
+
+### 4. Services de monitoring (Raspberry Pi)
+
+```bash
 cd /home/raspberrypi/services
 g++ logger.cpp -o mqtt_logger -lpaho-mqttpp3 -lpaho-mqtt3as
-```shell
-nohup /home/raspberrypi/services/mqtt_logger > /dev/null 2>&1 &
-nohup /home/raspberrypi/services/log_responder.sh > /dev/null 2>&1 &
-````
 
-🛠️ Architecture du Système
-🔵 Couche Embarquée : ESP32 (C++/PlatformIO)
-Software Interlock : Algorithme interdisant l'activation simultanée des relais Montée/Descente pour protéger le bobinage moteur.
-
-Non-blocking I/O : Gestion de la course via millis() pour garantir une réactivité constante aux ordres d'arrêt d'urgence.
-
-Persistance État : Utilisation de Preferences.h pour mémoriser la position et le nom de la pièce après une coupure de courant.
-
-🟢 Couche Réseau : MQTT (Mosquitto)
-Standard Industriel : Communication via protocole Pub/Sub léger.
-
-Double Tunnel : Port 1883 (TCP brut) pour le hardware et Port 9001 (WebSockets) pour le navigateur.
-
-LWT (Last Will) : Notification automatique du broker si un volet tombe hors ligne.
-
-🔴 Couche Applicative : React 18 & Mantine UI
-Design System : Utilisation de Mantine UI pour une interface ergonomique, accessible et compatible Dark Mode.
-
-Type Safety : Développement intégral sous TypeScript pour sécuriser les échanges de données MQTT.
-
-Logger C++ : Service indépendant sur le Pi pour l'archivage des événements dans volets_history.log.
-
-```markdown
-- **Logger C++ & Bridge Bash** :
-- Le binaire `mqtt_logger` assure l'écriture asynchrone des trames MQTT dans un fichier plat.
-- Le script `log_responder.sh` agit comme un serveur stateless pour streamer l'historique vers React à la demande.
+nohup ./mqtt_logger > /dev/null 2>&1 &
+nohup ./log_responder.sh > /dev/null 2>&1 &
 ```
 
-🔍 Diagnostic & Maintenance
-Pour monitorer le trafic réseau en temps réel depuis le Raspberry Pi :
+---
 
-```shell
+## 🏗️ Architecture
+
+```
+┌─────────────┐     MQTT/TCP      ┌──────────────────┐     MQTT/WS
+│   ESP32     │ ────────────────► │  Raspberry Pi    │ ◄──────────── React 18
+│  (C++/PIO)  │                   │  Mosquitto 1883  │              TypeScript
+│             │                   │  Logger C++      │              Mantine UI
+└─────────────┘                   │  Log Responder   │
+                                  └──────────────────┘
+```
+
+**Points techniques notables :**
+- **Software Interlock** : algorithme ESP32 interdisant l'activation simultanée Montée/Descente
+- **Non-blocking I/O** : gestion de la course via `millis()` pour réactivité constante
+- **Persistance état** : `Preferences.h` mémorise position et nom de pièce après coupure
+- **LWT (Last Will)** : notification automatique si un volet tombe hors ligne
+
+---
+
+## 🔍 Diagnostic
+
+```bash
+# Monitorer le trafic MQTT en temps réel
 mosquitto_sub -h localhost -t "#" -v
-```
 
-```shell
-# Pour réinitialiser l'historique des logs (Interface propre)
+# Réinitialiser l'historique des logs
 > /home/raspberrypi/shutter_events.log
 ```
 
-Note importante : Les noms de pièces (topics) sont sensibles à la casse. Pour une compatibilité parfaite entre l'ESP32 et l'interface React, utilisez toujours des minuscules (ex: salon, cuisine).
+---
 
-📜 Licence
-Projet sous licence MIT. Développé dans un objectif d'apprentissage et d'indépendance technologique.
-EOF
+## 📜 Licence
+
+MIT — Projet d'apprentissage et d'indépendance technologique.
