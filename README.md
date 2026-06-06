@@ -129,6 +129,11 @@ mosquitto_sub -h localhost -t "#" -v
 
 ---
 
+## 📖 Documentation technique
+
+Pour une analyse approfondie des choix d'architecture, protocoles et patterns utilisés :
+[Voir la documentation technique](documentation.md)
+
 ## 📜 Licence
 
 MIT — Projet d'apprentissage et d'indépendance technologique.

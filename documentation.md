@@ -1,5 +1,11 @@
-# Infrastructure IoT Domotique : Contrôle de Volets Roulants
+# 📐 Documentation Technique — Système IoT Volets Roulants
 
+> Analyse approfondie des choix d'architecture, protocoles et patterns.
+> Pour l'installation et le lancement, voir le [README](README.md).
+
+![TypeScript](https://img.shields.io/badge/TypeScript-80%25-3178C6?style=flat-square&logo=typescript)
+![MQTT](https://img.shields.io/badge/MQTT-QoS1-660066?style=flat-square)
+![C++](https://img.shields.io/badge/C++-ESP32-00599C?style=flat-square&logo=cplusplus)
 ## 1. Vision et Objectifs Stratégiques
 
 Ce projet vise à concevoir un écosystème domotique **Open-Source** et **Cloud-Independent**.
@@ -79,3 +85,4 @@ Ce projet valide une expertise **Full-Stack IoT** :
 2. **Embarqué** : Programmation C++ bas niveau et gestion de mémoire.
 3. **Web** : React (Mantine), WebSockets, Real-time UI.
 4. **Ingénierie** : Sécurisation logicielle (Interlock) et architecture découplée.
+

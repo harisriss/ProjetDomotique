@@ -33,10 +33,13 @@ PlatformIO/test/
 PlatformIO/include/secrets.h
 
 # ==========================================
-# RASPBERRY SERVER (C++)
+# RASPBERRY SERVER (C++ & Node-RED)
 # ==========================================
 RaspberryServer/obj/
 RaspberryServer/domo_server
+RaspberryServer/mqtt_logger/mqtt_logger
+RaspberryServer/mqtt_logger/obj/
+RaspberryServer/nodered-data/node_modules/
 
 # ==========================================
 # CONFIG & MOSQUITTO
@@ -44,4 +47,5 @@ RaspberryServer/domo_server
 # On garde les fichiers .conf mais on ignore les données
 Config/mosquitto/data/
 Config/mosquitto/log/
+RaspberryServer/mosquitto/data/
 *.db

@@ -1,0 +1,38 @@
+CXXFLAGS = -Wall -Wextra -std=c++17 -O2# Nom du binaire final
+TARGET = mqtt_logger
+
+# Compilateur
+CXX = g++
+
+# Options de compilation (C++11, avertissements, et optimisation)
+CXXFLAGS = -Wall -Wextra -std=c++11 -O2
+
+# Bibliothèques à lier (paho-mqtt-cpp ou mosquitto selon ce que tu utilises)
+# Si tu utilises libmosquitto, garde -lmosquitto
+LDFLAGS = -lmosquitto -lpthread
+
+# Dossiers
+SRCDIR = src
+OBJDIR = obj
+
+# Liste des fichiers sources et objets
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)
+OBJECTS = $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
+
+# Règle par défaut
+all: $(TARGET)
+
+# Compilation du binaire
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Compilation des fichiers objets
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@mkdir -p $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Nettoyage
+clean:
+	rm -rf $(OBJDIR) $(TARGET)
+
+.PHONY: all clean

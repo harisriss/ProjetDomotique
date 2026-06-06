@@ -1,0 +1,155 @@
+[
+    {
+        "id": "3f7fc5fa685d7352",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "4bee18782340d01d",
+        "type": "mqtt-broker",
+        "name": "myPiBroker",
+        "broker": "broker",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "d2cc1aa60b350aac",
+        "type": "mqtt in",
+        "z": "3f7fc5fa685d7352",
+        "name": "etat volet salon",
+        "topic": "maison/volet/salon/etat",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "4bee18782340d01d",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 120,
+        "y": 60,
+        "wires": [
+            [
+                "95c8c6353fa75427"
+            ]
+        ]
+    },
+    {
+        "id": "95c8c6353fa75427",
+        "type": "debug",
+        "z": "3f7fc5fa685d7352",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 360,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "974ba02c1fc5afb8",
+        "type": "inject",
+        "z": "3f7fc5fa685d7352",
+        "name": "Bouton ouvrir",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "maison/volet/salon/commande",
+        "payload": "OUVRIR",
+        "payloadType": "str",
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "2cef93f306d136d8"
+            ]
+        ]
+    },
+    {
+        "id": "2cef93f306d136d8",
+        "type": "mqtt out",
+        "z": "3f7fc5fa685d7352",
+        "name": "",
+        "topic": "maison/volet/salon/commande",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "4bee18782340d01d",
+        "x": 430,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "35ed611bcf56f9ba",
+        "type": "inject",
+        "z": "3f7fc5fa685d7352",
+        "name": "Bouton fermer",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "maison/volet/salon/commande",
+        "payload": "FERMER",
+        "payloadType": "str",
+        "x": 130,
+        "y": 240,
+        "wires": [
+            [
+                "2cef93f306d136d8"
+            ]
+        ]
+    }
+]
